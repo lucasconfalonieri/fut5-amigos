@@ -48,7 +48,6 @@ function safeStanding(s?: any): Standing {
 }
 
 export async function fetchSeasonTable(seasonId: string): Promise<TableRow[]> {
-    // Players activos (si no usás isActive todavía, cambiá a query(playersRef) y listo)
     const playersRef = collection(db, "seasons", seasonId, "players");
     const playersQ = query(playersRef, where("isActive", "==", true));
     const playersSnap = await getDocs(playersQ);
@@ -64,7 +63,6 @@ export async function fetchSeasonTable(seasonId: string): Promise<TableRow[]> {
     const rows: TableRow[] = playersSnap.docs.map((d) => {
         const p = d.data() as any;
 
-        // 👇 acá está la clave: siempre un string válido
         const displayName = asString(p.nickname, asString(p.name, d.id));
 
         const st = safeStanding(standingsMap.get(d.id));
@@ -84,7 +82,6 @@ export async function fetchSeasonTable(seasonId: string): Promise<TableRow[]> {
         };
     });
 
-    // Orden: PTS desc, PG desc, PJ desc, nombre asc (seguro)
     rows.sort((a, b) => {
         if (b.points !== a.points) return b.points - a.points;
         if (b.wins !== a.wins) return b.wins - a.wins;

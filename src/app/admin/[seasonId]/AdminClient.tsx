@@ -12,18 +12,15 @@ export default function AdminClient({ seasonId }: { seasonId: string }) {
     const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
     const [error, setError] = useState<string | null>(null);
 
-    // jugadores
     const [players, setPlayers] = useState<PlayerDoc[]>([]);
     const [pLoading, setPLoading] = useState(false);
     const [pErr, setPErr] = useState<string | null>(null);
     const [name, setName] = useState("");
     const [nickname, setNickname] = useState("");
 
-    // cargar partido
     const [matchDate, setMatchDate] = useState<string>(() => {
         const d = new Date();
         d.setHours(21, 0, 0, 0);
-        // datetime-local usa horario local pero quiere formato "YYYY-MM-DDTHH:mm"
         return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
     });
 
@@ -84,14 +81,12 @@ export default function AdminClient({ seasonId }: { seasonId: string }) {
 
     useEffect(() => {
         if (user && isAdmin) refreshPlayers();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user, isAdmin]);
 
     const activeCount = useMemo(() => players.filter((p) => p.isActive).length, [players]);
 
     const activePlayers = useMemo(() => players.filter((p) => p.isActive), [players]);
 
-    // used ids para evitar repetidos
     const usedIds = useMemo(() => {
         const ids = [...teamA, ...teamB].filter(Boolean);
         return new Set(ids);
@@ -210,18 +205,18 @@ export default function AdminClient({ seasonId }: { seasonId: string }) {
     };
 
     return (
-        <main className="min-h-screen bg-zinc-950 text-white">
+        <main className="min-h-screen bg-transparent text-white">
             <div className="mx-auto max-w-4xl px-4 py-8">
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-semibold">Admin</h1>
-                        <p className="text-sm text-white/60">Temporada: {seasonId}</p>
+                        <p className="text-sm text-white/60">Temporada: 2026</p>
                     </div>
 
                     {!user ? (
                         <button
                             onClick={login}
-                            className="rounded-full bg-white/10 px-4 py-2 text-sm font-medium hover:bg-white/15"
+                            className="rounded-full border border-white/10 bg-zinc-950 px-4 py-2 text-sm font-medium hover:border-emerald-500/30 hover:bg-zinc-900"
                         >
                             Iniciar sesión (Google)
                         </button>
@@ -230,7 +225,7 @@ export default function AdminClient({ seasonId }: { seasonId: string }) {
                             <span className="text-xs text-white/60">{user.email}</span>
                             <button
                                 onClick={logout}
-                                className="rounded-full bg-white/10 px-4 py-2 text-sm hover:bg-white/15"
+                                className="rounded-full border border-white/10 bg-zinc-950 px-4 py-2 text-sm hover:border-emerald-500/30 hover:bg-zinc-900"
                             >
                                 Salir
                             </button>
@@ -246,107 +241,118 @@ export default function AdminClient({ seasonId }: { seasonId: string }) {
 
                 {user && isAdmin && (
                     <div className="mt-6 space-y-4">
-                        {/* JUGADORES */}
-                        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                            <div className="flex items-center justify-between gap-3">
-                                <div>
-                                    <h2 className="text-lg font-semibold">1) Jugadores</h2>
-                                    <p className="text-sm text-white/60">
-                                        Activos: <span className="font-semibold text-white/80">{activeCount}</span>
-                                        {" · "}
-                                        Total: <span className="font-semibold text-white/80">{players.length}</span>
-                                    </p>
+                        <details className="card-solid rounded-2xl" open={false}>
+                            <summary className="cursor-pointer select-none list-none px-4 py-4">
+                                <div className="flex items-center justify-between gap-3">
+                                    <div>
+                                        <h2 className="text-lg font-semibold">1) Jugadores</h2>
+                                        <p className="text-sm text-white/60">
+                                            Activos: <span className="font-semibold text-white/80">{activeCount}</span>
+                                            {" · "}
+                                            Total: <span className="font-semibold text-white/80">{players.length}</span>
+                                        </p>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                refreshPlayers();
+                                            }}
+                                            className="rounded-full border border-white/10 bg-zinc-950 px-4 py-2 text-sm hover:border-emerald-500/30 hover:bg-zinc-900"
+                                            disabled={pLoading}
+                                        >
+                                            {pLoading ? "Actualizando..." : "Refrescar"}
+                                        </button>
+
+                                        <span className="text-xs text-white/50">▼</span>
+                                    </div>
+                                </div>
+                            </summary>
+
+                            <div className="px-4 pb-4">
+                                {pErr && (
+                                    <div className="mt-2 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
+                                        {pErr}
+                                    </div>
+                                )}
+
+                                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                                    <input
+                                        value={name}
+                                        onChange={(e) => setName(e.target.value)}
+                                        placeholder="Nombre (obligatorio)"
+                                        className="rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500/30"
+                                    />
+                                    <input
+                                        value={nickname}
+                                        onChange={(e) => setNickname(e.target.value)}
+                                        placeholder="Apodo (opcional)"
+                                        className="rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500/30"
+                                    />
+                                    <button
+                                        onClick={onAdd}
+                                        className="rounded-xl bg-white px-3 py-2 text-sm font-semibold text-zinc-950 hover:bg-white/90"
+                                    >
+                                        Agregar
+                                    </button>
                                 </div>
 
-                                <button
-                                    onClick={refreshPlayers}
-                                    className="rounded-full bg-white/10 px-4 py-2 text-sm hover:bg-white/15"
-                                    disabled={pLoading}
-                                >
-                                    {pLoading ? "Actualizando..." : "Refrescar"}
-                                </button>
-                            </div>
-
-                            {pErr && (
-                                <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
-                                    {pErr}
-                                </div>
-                            )}
-
-                            <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                                <input
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
-                                    placeholder="Nombre (obligatorio)"
-                                    className="rounded-xl border border-white/10 bg-zinc-900/60 px-3 py-2 text-sm outline-none focus:border-white/20"
-                                />
-                                <input
-                                    value={nickname}
-                                    onChange={(e) => setNickname(e.target.value)}
-                                    placeholder="Apodo (opcional)"
-                                    className="rounded-xl border border-white/10 bg-zinc-900/60 px-3 py-2 text-sm outline-none focus:border-white/20"
-                                />
-                                <button
-                                    onClick={onAdd}
-                                    className="rounded-xl bg-white px-3 py-2 text-sm font-semibold text-zinc-950 hover:bg-white/90"
-                                >
-                                    Agregar
-                                </button>
-                            </div>
-
-                            <div className="mt-4 overflow-hidden rounded-2xl border border-white/10">
-                                <table className="w-full text-sm">
-                                    <thead className="bg-white/5 text-left text-xs uppercase tracking-wide text-white/60">
-                                        <tr>
-                                            <th className="px-3 py-3">Jugador</th>
-                                            <th className="px-3 py-3">Activo</th>
-                                            <th className="px-3 py-3 text-right">Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {players.length === 0 ? (
+                                <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-zinc-950">
+                                    <table className="w-full text-sm">
+                                        <thead className="bg-emerald-500/10 text-left text-xs uppercase tracking-wide text-white/70">
                                             <tr>
-                                                <td colSpan={3} className="px-3 py-6 text-white/60">
-                                                    No hay jugadores todavía.
-                                                </td>
+                                                <th className="px-3 py-3">Jugador</th>
+                                                <th className="px-3 py-3">Activo</th>
+                                                <th className="px-3 py-3 text-right">Acciones</th>
                                             </tr>
-                                        ) : (
-                                            players.map((p) => (
-                                                <tr key={p.id} className="border-t border-white/5 hover:bg-white/5">
-                                                    <td className="px-3 py-3">
-                                                        <div className="font-medium">{p.nickname?.trim() || p.name}</div>
-                                                        <div className="text-xs text-white/50">{p.name}</div>
-                                                    </td>
-
-                                                    <td className="px-3 py-3">
-                                                        <label className="inline-flex items-center gap-2">
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={p.isActive}
-                                                                onChange={(e) => onToggle(p.id, e.target.checked)}
-                                                            />
-                                                            <span className="text-xs text-white/60">{p.isActive ? "Sí" : "No"}</span>
-                                                        </label>
-                                                    </td>
-
-                                                    <td className="px-3 py-3 text-right">
-                                                        <button
-                                                            onClick={() => onDelete(p.id)}
-                                                            className="rounded-full bg-white/10 px-3 py-1.5 text-xs hover:bg-white/15"
-                                                        >
-                                                            Eliminar
-                                                        </button>
+                                        </thead>
+                                        <tbody>
+                                            {players.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={3} className="px-3 py-6 text-white/60">
+                                                        No hay jugadores todavía.
                                                     </td>
                                                 </tr>
-                                            ))
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                                            ) : (
+                                                players.map((p) => (
+                                                    <tr key={p.id} className="border-t border-white/5 hover:bg-white/5">
+                                                        <td className="px-3 py-3">
+                                                            <div className="font-medium">{p.nickname?.trim() || p.name}</div>
+                                                            <div className="text-xs text-white/50">{p.name}</div>
+                                                        </td>
 
-                        {/* CARGAR PARTIDO */}
-                        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                                                        <td className="px-3 py-3">
+                                                            <label className="inline-flex items-center gap-2">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={p.isActive}
+                                                                    onChange={(e) => onToggle(p.id, e.target.checked)}
+                                                                />
+                                                                <span className="text-xs text-white/60">{p.isActive ? "Sí" : "No"}</span>
+                                                            </label>
+                                                        </td>
+
+                                                        <td className="px-3 py-3 text-right">
+                                                            <button
+                                                                onClick={() => onDelete(p.id)}
+                                                                className="rounded-full border border-white/10 bg-zinc-950 px-3 py-1.5 text-xs hover:border-red-500/30 hover:bg-zinc-900"
+                                                            >
+                                                                Eliminar
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </details>
+
+                        <div className="card-solid rounded-2xl p-4">
                             <h2 className="text-lg font-semibold">2) Cargar partido (5v5)</h2>
                             <p className="text-sm text-white/60">
                                 Guardá fecha, equipos y diferencia de gol. La tabla se actualiza automáticamente.
@@ -372,7 +378,7 @@ export default function AdminClient({ seasonId }: { seasonId: string }) {
                                         type="datetime-local"
                                         value={matchDate}
                                         onChange={(e) => setMatchDate(e.target.value)}
-                                        className="w-full rounded-xl border border-white/10 bg-zinc-900/60 px-3 py-2 text-sm outline-none focus:border-white/20"
+                                        className="w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500/30"
                                     />
                                 </div>
 
@@ -385,7 +391,7 @@ export default function AdminClient({ seasonId }: { seasonId: string }) {
                                             setWinner(v);
                                             if (v === "D") setGoalDiffAbs(0);
                                         }}
-                                        className="w-full rounded-xl border border-white/10 bg-zinc-900/60 px-3 py-2 text-sm outline-none focus:border-white/20"
+                                        className="w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500/30"
                                     >
                                         <option value="A">Gana Team A</option>
                                         <option value="D">Empate</option>
@@ -399,7 +405,7 @@ export default function AdminClient({ seasonId }: { seasonId: string }) {
                                         value={goalDiffAbs}
                                         disabled={winner === "D"}
                                         onChange={(e) => setGoalDiffAbs(Number(e.target.value))}
-                                        className="w-full rounded-xl border border-white/10 bg-zinc-900/60 px-3 py-2 text-sm outline-none focus:border-white/20 disabled:opacity-40"
+                                        className="w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500/30"
                                     />
 
                                     <p className="mt-1 text-xs text-white/40">
@@ -411,8 +417,7 @@ export default function AdminClient({ seasonId }: { seasonId: string }) {
                             </div>
 
                             <div className="mt-5 grid gap-4 md:grid-cols-2">
-                                {/* Team A */}
-                                <div className="rounded-2xl border border-white/10 bg-zinc-950/30 p-4">
+                                <div className="rounded-2xl border border-white/10 bg-zinc-950 p-4">
                                     <div className="mb-3 flex items-center justify-between">
                                         <h3 className="font-semibold">Equipo A</h3>
                                         <span className="text-xs text-white/50">5 jugadores</span>
@@ -437,8 +442,7 @@ export default function AdminClient({ seasonId }: { seasonId: string }) {
                                     </div>
                                 </div>
 
-                                {/* Team B */}
-                                <div className="rounded-2xl border border-white/10 bg-zinc-950/30 p-4">
+                                <div className="rounded-2xl border border-white/10 bg-zinc-950 p-4">
                                     <div className="mb-3 flex items-center justify-between">
                                         <h3 className="font-semibold">Equipo B</h3>
                                         <span className="text-xs text-white/50">5 jugadores</span>

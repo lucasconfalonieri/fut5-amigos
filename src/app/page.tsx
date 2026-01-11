@@ -14,7 +14,7 @@ export default function Home() {
             href="/season/1"
             className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-zinc-950"
           >
-            Ver tabla (Temporada 1)
+            Ver tabla (Temporada 2026)
           </Link>
           <Link
             href="/admin/1"

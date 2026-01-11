@@ -52,7 +52,6 @@ export async function createMatchAndUpdateStandings(input: {
     const res = resultFromGoalDiff(goalDiff);
 
     await runTransaction(db, async (tx) => {
-        // ✅ 1) READS (todos antes de escribir)
         const seasonSnap = await tx.get(seasonRef);
         if (!seasonSnap.exists()) throw new Error("Temporada no encontrada.");
 
@@ -60,19 +59,15 @@ export async function createMatchAndUpdateStandings(input: {
         const drawPts = seasonSnap.data().pointsDraw ?? 1;
         const lossPts = seasonSnap.data().pointsLoss ?? 0;
 
-        // refs de standings para los 10
         const standingRefs = all.map((playerId) =>
             doc(db, "seasons", seasonId, "standings", playerId)
         );
 
-        // leemos todos los standings (antes de escribir nada)
         const standingSnaps = await Promise.all(standingRefs.map((ref) => tx.get(ref)));
 
-        // armamos un map id -> snap
         const snapById = new Map<string, (typeof standingSnaps)[number]>();
         for (let i = 0; i < all.length; i++) snapById.set(all[i], standingSnaps[i]);
 
-        // ✅ 2) WRITES (recién ahora)
         const matchRef = doc(matchesCol);
         tx.set(matchRef, {
             date,
@@ -120,7 +115,6 @@ export async function createMatchAndUpdateStandings(input: {
             });
         };
 
-        // Team A y Team B
         for (const pid of teamA) apply(pid, res.a);
         for (const pid of teamB) apply(pid, res.b);
     });
