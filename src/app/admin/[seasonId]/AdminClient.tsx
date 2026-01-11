@@ -59,6 +59,9 @@ export default function AdminClient({ seasonId }: { seasonId: string }) {
     const [teamA, setTeamA] = useState<string[]>(Array(5).fill(""));
     const [teamB, setTeamB] = useState<string[]>(Array(5).fill(""));
 
+    const [smokedA, setSmokedA] = useState<boolean[]>(Array(5).fill(false));
+    const [smokedB, setSmokedB] = useState<boolean[]>(Array(5).fill(false));
+
     const [mLoading, setMLoading] = useState(false);
     const [mErr, setMErr] = useState<string | null>(null);
     const [mOk, setMOk] = useState<string | null>(null);
@@ -161,12 +164,14 @@ export default function AdminClient({ seasonId }: { seasonId: string }) {
                 next[idx] = playerId;
                 return next;
             });
+            if (!playerId) setSmokedA((prev) => prev.map((v, i) => (i === idx ? false : v)));
         } else {
             setTeamB((prev) => {
                 const next = [...prev];
                 next[idx] = playerId;
                 return next;
             });
+            if (!playerId) setSmokedB((prev) => prev.map((v, i) => (i === idx ? false : v)));
         }
     }
 
@@ -205,7 +210,10 @@ export default function AdminClient({ seasonId }: { seasonId: string }) {
         try {
             setMLoading(true);
             const date = new Date(matchDate);
-
+            const smokedPlayerIds = [
+                ...teamA.filter((id, i) => id && smokedA[i]),
+                ...teamB.filter((id, i) => id && smokedB[i]),
+            ];
             await createMatchAndUpdateStandings({
                 seasonId,
                 date,
@@ -213,6 +221,7 @@ export default function AdminClient({ seasonId }: { seasonId: string }) {
                 teamB,
                 goalDiff: computedGoalDiff,
                 createdBy: user.uid,
+                smokedPlayerIds,
             });
 
             setMOk("Partido cargado ✅");
@@ -220,6 +229,8 @@ export default function AdminClient({ seasonId }: { seasonId: string }) {
             setTeamB(Array(5).fill(""));
             setWinner("D");
             setGoalDiffAbs(0);
+            setSmokedA(Array(5).fill(false));
+            setSmokedB(Array(5).fill(false));
         } catch (e: any) {
             setMErr(e?.message ?? "Error cargando partido");
         } finally {
@@ -515,19 +526,32 @@ export default function AdminClient({ seasonId }: { seasonId: string }) {
 
                                             <div className="space-y-2">
                                                 {teamA.map((val, idx) => (
-                                                    <select
-                                                        key={`A-${idx}`}
-                                                        value={val}
-                                                        onChange={(e) => setTeamSlot("A", idx, e.target.value)}
-                                                        className="w-full rounded-xl border border-white/10 bg-zinc-900/60 px-3 py-2 text-sm outline-none focus:border-white/20"
-                                                    >
-                                                        <option value="">Elegir jugador {idx + 1}</option>
-                                                        {optionsFor("A", idx).map((p) => (
-                                                            <option key={p.id} value={p.id}>
-                                                                {p.nickname?.trim() || p.name}
-                                                            </option>
-                                                        ))}
-                                                    </select>
+                                                    <div key={`A-${idx}`} className="flex items-center gap-3">
+                                                        <select
+                                                            value={val}
+                                                            onChange={(e) => setTeamSlot("A", idx, e.target.value)}
+                                                            className="w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500/30"
+                                                        >
+                                                            <option value="">Elegir jugador {idx + 1}</option>
+                                                            {optionsFor("A", idx).map((p) => (
+                                                                <option key={p.id} value={p.id}>
+                                                                    {p.nickname?.trim() || p.name}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+
+                                                        <label className="flex shrink-0 items-center gap-2 rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-xs text-white/70">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={smokedA[idx]}
+                                                                disabled={!val}
+                                                                onChange={(e) =>
+                                                                    setSmokedA((prev) => prev.map((v, i) => (i === idx ? e.target.checked : v)))
+                                                                }
+                                                            />
+                                                            <span>Fumó 🚬</span>
+                                                        </label>
+                                                    </div>
                                                 ))}
                                             </div>
                                         </div>
@@ -540,19 +564,32 @@ export default function AdminClient({ seasonId }: { seasonId: string }) {
 
                                             <div className="space-y-2">
                                                 {teamB.map((val, idx) => (
-                                                    <select
-                                                        key={`B-${idx}`}
-                                                        value={val}
-                                                        onChange={(e) => setTeamSlot("B", idx, e.target.value)}
-                                                        className="w-full rounded-xl border border-white/10 bg-zinc-900/60 px-3 py-2 text-sm outline-none focus:border-white/20"
-                                                    >
-                                                        <option value="">Elegir jugador {idx + 1}</option>
-                                                        {optionsFor("B", idx).map((p) => (
-                                                            <option key={p.id} value={p.id}>
-                                                                {p.nickname?.trim() || p.name}
-                                                            </option>
-                                                        ))}
-                                                    </select>
+                                                    <div key={`B-${idx}`} className="flex items-center gap-3">
+                                                        <select
+                                                            value={val}
+                                                            onChange={(e) => setTeamSlot("B", idx, e.target.value)}
+                                                            className="w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500/30"
+                                                        >
+                                                            <option value="">Elegir jugador {idx + 1}</option>
+                                                            {optionsFor("B", idx).map((p) => (
+                                                                <option key={p.id} value={p.id}>
+                                                                    {p.nickname?.trim() || p.name}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+
+                                                        <label className="flex shrink-0 items-center gap-2 rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-xs text-white/70">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={smokedB[idx]}
+                                                                disabled={!val}
+                                                                onChange={(e) =>
+                                                                    setSmokedB((prev) => prev.map((v, i) => (i === idx ? e.target.checked : v)))
+                                                                }
+                                                            />
+                                                            <span>Fumó 🚬</span>
+                                                        </label>
+                                                    </div>
                                                 ))}
                                             </div>
                                         </div>

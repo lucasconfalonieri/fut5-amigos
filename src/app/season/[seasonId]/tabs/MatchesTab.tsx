@@ -64,6 +64,12 @@ export default function MatchesTab({
         return Array.from(matchesByDay.keys()).sort((a, b) => (a < b ? 1 : -1));
     }, [matchesByDay]);
 
+    const sortedPlayers = useMemo(() => {
+        return players
+            .slice()
+            .sort((a, b) => (a.nickname?.trim() || a.name).localeCompare(b.nickname?.trim() || b.name, "es"));
+    }, [players]);
+
     if (loading) return <p className="text-white/60">Cargando partidos…</p>;
     if (error) return <p className="text-red-200">{error}</p>;
     if (!matches.length) return <p className="text-white/60">Todavía no hay partidos cargados.</p>;
@@ -82,16 +88,11 @@ export default function MatchesTab({
                             disabled={loadingPlayers || !!errorPlayers}
                         >
                             <option value="">Todos</option>
-                            {players
-                                .slice()
-                                .sort((a, b) =>
-                                    (a.nickname?.trim() || a.name).localeCompare(b.nickname?.trim() || b.name, "es")
-                                )
-                                .map((p) => (
-                                    <option key={p.id} value={p.id}>
-                                        {p.nickname?.trim() || p.name}
-                                    </option>
-                                ))}
+                            {sortedPlayers.map((p) => (
+                                <option key={p.id} value={p.id}>
+                                    {p.nickname?.trim() || p.name}
+                                </option>
+                            ))}
                         </select>
                         {errorPlayers && <p className="mt-1 text-xs text-red-200">{errorPlayers}</p>}
                     </div>
@@ -138,21 +139,20 @@ export default function MatchesTab({
 
                     return (
                         <section key={dayKey}>
-                            <h3 className="mb-3 text-base font-semibold text-white capitalize">
-                                {formatDayTitle(dayDate)}
-                            </h3>
+                            <h3 className="mb-3 text-base font-semibold text-white capitalize">{formatDayTitle(dayDate)}</h3>
 
                             <div className="space-y-3">
                                 {list.map((m) => {
                                     const res = resultLabel(m.goalDiff);
 
-                                    // badge más sólido
                                     const badge =
                                         res.tone === "draw"
                                             ? "border-white/10 bg-zinc-950 text-white/80"
                                             : res.tone === "winA"
                                                 ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-200"
                                                 : "border-sky-500/25 bg-sky-500/10 text-sky-200";
+
+                                    const smokedSet = new Set(m.smokedPlayerIds ?? []);
 
                                     return (
                                         <div key={m.id} className="card-solid rounded-2xl p-4">
@@ -162,6 +162,11 @@ export default function MatchesTab({
                                                     <span className={`rounded-full border px-3 py-1 text-xs font-medium ${badge}`}>
                                                         {res.label}
                                                     </span>
+                                                    {smokedSet.size > 0 && (
+                                                        <span className="rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200">
+                                                            🚬 {smokedSet.size}
+                                                        </span>
+                                                    )}
                                                 </div>
 
                                                 <div className="text-xs text-white/50">
@@ -179,6 +184,11 @@ export default function MatchesTab({
                                                                 className="rounded-full border border-white/10 bg-zinc-900 px-3 py-1 text-xs text-white/85"
                                                             >
                                                                 {playerNameById.get(pid) ?? pid}
+                                                                {smokedSet.has(pid) && (
+                                                                    <span className="ml-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-200">
+                                                                        🚬
+                                                                    </span>
+                                                                )}
                                                             </span>
                                                         ))}
                                                     </div>
@@ -193,6 +203,11 @@ export default function MatchesTab({
                                                                 className="rounded-full border border-white/10 bg-zinc-900 px-3 py-1 text-xs text-white/85"
                                                             >
                                                                 {playerNameById.get(pid) ?? pid}
+                                                                {smokedSet.has(pid) && (
+                                                                    <span className="ml-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-200">
+                                                                        🚬
+                                                                    </span>
+                                                                )}
                                                             </span>
                                                         ))}
                                                     </div>

@@ -8,6 +8,7 @@ import StandingsTab from "./tabs/StandingsTab";
 import MatchesTab from "./tabs/MatchesTab";
 import HeadToHeadTab from "./tabs/HeadToHeadTab";
 import { useSearchParams } from "next/navigation";
+import SmokeStatsCard from "./tabs/SmokeStatsCard";
 
 type Tab = "table" | "matches" | "h2h";
 
@@ -17,7 +18,7 @@ export default function SeasonClient({ seasonId }: { seasonId: string }) {
 
     const { rows, loadingTable, errorTable } = useStandings(seasonId);
     const { players, playerNameById, loadingPlayers, errorPlayers } = usePlayers(seasonId);
-    const { matches, loadingMatches, errorMatches } = useMatches(seasonId, tab === "matches" || tab === "h2h");
+    const { matches, loadingMatches, errorMatches } = useMatches(seasonId, true);
 
     useEffect(() => {
         const t = searchParams.get("tab");
@@ -79,8 +80,19 @@ export default function SeasonClient({ seasonId }: { seasonId: string }) {
                 </header>
 
                 <section className="mt-6">
-                    {tab === "table" && <StandingsTab rows={rows} loading={loadingTable} error={errorTable} />}
-
+                    {tab === "table" && (
+                        <>
+                            <StandingsTab rows={rows} loading={loadingTable} error={errorTable} />
+                            <div className="mt-4">
+                                <SmokeStatsCard
+                                    matches={matches}
+                                    loading={loadingMatches}
+                                    error={errorMatches}
+                                    playerNameById={playerNameById}
+                                />
+                            </div>
+                        </>
+                    )}
                     {tab === "matches" && (
                         <MatchesTab
                             matches={matches}

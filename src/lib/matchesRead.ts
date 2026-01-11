@@ -7,6 +7,7 @@ export type MatchDoc = {
     teamA: string[];
     teamB: string[];
     goalDiff: number;
+    smokedPlayerIds?: string[];
     createdBy?: string;
 };
 
@@ -29,6 +30,7 @@ export async function listMatches(seasonId: string): Promise<MatchDoc[]> {
             date: dateVal,
             teamA: Array.isArray(data.teamA) ? data.teamA : [],
             teamB: Array.isArray(data.teamB) ? data.teamB : [],
+            smokedPlayerIds: (data.smokedPlayerIds ?? []) as string[],
             goalDiff: asNumber(data.goalDiff),
             createdBy: data.createdBy,
         };
