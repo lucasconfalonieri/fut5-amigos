@@ -1,4 +1,7 @@
+"use client";
+
 import { TableRow } from "@/lib/seasonTable";
+import { useRouter } from "next/navigation";
 
 type Res = "W" | "D" | "L";
 
@@ -54,26 +57,23 @@ export default function StandingsTab({
     loading: boolean;
     error: string | null;
 }) {
+    const router = useRouter();
+
+    // MVP: si tu temporada siempre es /season/1, dejamos esto fijo
+    const seasonId = "1";
+
     if (loading) return <p className="text-white/60">Cargando tabla…</p>;
     if (error) return <p className="text-red-200">{error}</p>;
     if (!rows.length) return <p className="text-white/60">No hay datos todavía.</p>;
 
-    const thBase =
-        "px-4 py-3 align-middle whitespace-nowrap";
-    const tdBase =
-        "px-4 py-3 align-middle";
-    const thNum =
-        `${thBase} text-center`;
-    const tdNum =
-        `${tdBase} text-center tabular-nums`;
-    const thLeft =
-        `${thBase} text-left`;
-    const tdLeft =
-        `${tdBase} text-left`;
-    const thCenter =
-        `${thBase} text-center`;
-    const tdCenter =
-        `${tdBase} text-center`;
+    const thBase = "px-4 py-3 align-middle whitespace-nowrap";
+    const tdBase = "px-4 py-3 align-middle";
+    const thNum = `${thBase} text-center`;
+    const tdNum = `${tdBase} text-center tabular-nums`;
+    const thLeft = `${thBase} text-left`;
+    const tdLeft = `${tdBase} text-left`;
+    const thCenter = `${thBase} text-center`;
+    const tdCenter = `${tdBase} text-center`;
 
     return (
         <div className="overflow-x-auto rounded-2xl card-solid">
@@ -101,15 +101,24 @@ export default function StandingsTab({
                         const last5 = parseLast5(r.last5);
                         const streakText = formatStreak(r.streak);
 
+                        const goProfile = () => router.push(`/season/${seasonId}/player/${r.playerId}`);
+
                         return (
                             <tr
                                 key={r.playerId}
-                                className="border-b border-white/5 hover:bg-emerald-500/5 transition"
+                                onClick={goProfile}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter" || e.key === " ") goProfile();
+                                }}
+                                tabIndex={0}
+                                role="button"
+                                className="border-b border-white/5 hover:bg-emerald-500/5 transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                                title={`Ver perfil de ${r.displayName}`}
                             >
                                 <td className={`${tdNum} text-white/70`}>{idx + 1}</td>
 
                                 <td className={tdLeft}>
-                                    <div className="font-medium">{r.displayName}</div>
+                                    <div className="font-medium hover:text-emerald-200">{r.displayName}</div>
                                 </td>
 
                                 {/* PTS columna destacada */}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePlayers } from "@/lib/hooks/usePlayers";
 import { useStandings } from "@/lib/hooks/useStandings";
 import { useMatches } from "@/lib/hooks/useMatches";
@@ -9,6 +9,7 @@ import MatchesTab from "./tabs/MatchesTab";
 import HeadToHeadTab from "./tabs/HeadToHeadTab";
 import { useSearchParams } from "next/navigation";
 import SmokeStatsCard from "./tabs/SmokeStatsCard";
+import Link from "next/link";
 
 type Tab = "table" | "matches" | "h2h";
 
@@ -24,6 +25,9 @@ export default function SeasonClient({ seasonId }: { seasonId: string }) {
         const t = searchParams.get("tab");
         if (t === "table" || t === "matches" || t === "h2h") setTab(t);
     }, [searchParams]);
+
+    const playersCount = players.length;
+    const activeCount = useMemo(() => players.filter((p) => p.isActive).length, [players]);
 
     return (
         <main className="min-h-screen bg-transparent text-white">
@@ -43,9 +47,43 @@ export default function SeasonClient({ seasonId }: { seasonId: string }) {
                             <p className="mt-1 text-base sm:text-lg text-white/70">
                                 Temporada <span className="font-semibold text-white/90">2026</span>
                             </p>
+
+                            <div className="mt-3 text-xs text-white/45">
+                                {loadingPlayers ? (
+                                    "Cargando jugadores…"
+                                ) : errorPlayers ? (
+                                    <span className="text-red-200">{errorPlayers}</span>
+                                ) : (
+                                    <>
+                                        Jugadores:{" "}
+                                        <span className="font-semibold text-white/75">{playersCount}</span>{" "}
+                                        <span className="text-white/35">·</span>{" "}
+                                        Activos:{" "}
+                                        <span className="font-semibold text-white/75">{activeCount}</span>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Accesos */}
+                        <div className="flex flex-wrap gap-2">
+                            <Link
+                                href={`/season/${seasonId}/players`}
+                                className="rounded-full border border-white/10 bg-zinc-950 px-4 py-2 text-sm font-medium hover:border-emerald-500/25 hover:bg-zinc-900"
+                            >
+                                Jugadores →
+                            </Link>
+
+                            <Link
+                                href={`/admin/${seasonId}`}
+                                className="rounded-full border border-white/10 bg-zinc-950 px-4 py-2 text-sm font-medium text-white/70 hover:text-white hover:border-white/20 hover:bg-zinc-900"
+                            >
+                                Admin
+                            </Link>
                         </div>
                     </div>
 
+                    {/* Tabs */}
                     <div className="mt-6 flex flex-wrap gap-2">
                         <button
                             onClick={() => setTab("table")}
@@ -82,7 +120,9 @@ export default function SeasonClient({ seasonId }: { seasonId: string }) {
                 <section className="mt-6">
                     {tab === "table" && (
                         <>
+                            {/* 👇 Así como lo tenés hoy (sin seasonId prop) */}
                             <StandingsTab rows={rows} loading={loadingTable} error={errorTable} />
+
                             <div className="mt-4">
                                 <SmokeStatsCard
                                     matches={matches}
@@ -93,6 +133,7 @@ export default function SeasonClient({ seasonId }: { seasonId: string }) {
                             </div>
                         </>
                     )}
+
                     {tab === "matches" && (
                         <MatchesTab
                             matches={matches}
