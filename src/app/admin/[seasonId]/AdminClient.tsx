@@ -11,7 +11,7 @@ export default function AdminClient({ seasonId }: { seasonId: string }) {
     const [user, setUser] = useState<User | null>(null);
     const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
     const [error, setError] = useState<string | null>(null);
-
+    const [venue, setVenue] = useState("");
     const [players, setPlayers] = useState<PlayerDoc[]>([]);
     const [pLoading, setPLoading] = useState(false);
     const [pErr, setPErr] = useState<string | null>(null);
@@ -222,6 +222,7 @@ export default function AdminClient({ seasonId }: { seasonId: string }) {
                 goalDiff: computedGoalDiff,
                 createdBy: user.uid,
                 smokedPlayerIds,
+                venue,
             });
 
             setMOk("Partido cargado ✅");
@@ -231,6 +232,7 @@ export default function AdminClient({ seasonId }: { seasonId: string }) {
             setGoalDiffAbs(0);
             setSmokedA(Array(5).fill(false));
             setSmokedB(Array(5).fill(false));
+            setVenue("");
         } catch (e: any) {
             setMErr(e?.message ?? "Error cargando partido");
         } finally {
@@ -480,6 +482,15 @@ export default function AdminClient({ seasonId }: { seasonId: string }) {
                                                 value={matchDate}
                                                 onChange={(e) => setMatchDate(e.target.value)}
                                                 className="w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500/30"
+                                            />
+                                        </div>
+                                        <div className="sm:col-span-2">
+                                            <label className="mb-1 block text-xs text-white/60">Cancha (opcional)</label>
+                                            <input
+                                                value={venue}
+                                                onChange={(e) => setVenue(e.target.value)}
+                                                placeholder="Ej: Sarmiento / CABU..."
+                                                className="w-full rounded-xl border border-white/10 bg-zinc-900/60 px-3 py-2 text-sm outline-none focus:border-emerald-500/30"
                                             />
                                         </div>
 

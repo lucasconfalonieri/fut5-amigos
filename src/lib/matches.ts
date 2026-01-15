@@ -40,10 +40,20 @@ export async function createMatchAndUpdateStandings(input: {
     teamB: string[]; // 5 ids
     goalDiff: number;
     createdBy: string; // uid
+
+    // ✅ NUEVO: cancha opcional
+    venue?: string;
+
+    // ya lo tenías
     smokedPlayerIds?: string[];
 }) {
     const { seasonId, date, teamA, teamB, goalDiff, createdBy } = input;
+
     const smokedPlayerIds = Array.from(new Set(input.smokedPlayerIds ?? []));
+
+    // ✅ normalizamos el venue
+    const venue = (input.venue ?? "").trim();
+    const venueValue = venue.length ? venue : null;
 
     if (teamA.length !== 5 || teamB.length !== 5) throw new Error("Debe ser 5v5.");
     const all = [...teamA, ...teamB];
@@ -76,6 +86,10 @@ export async function createMatchAndUpdateStandings(input: {
             teamA,
             teamB,
             goalDiff,
+
+            // ✅ NUEVO
+            venue: venueValue,
+
             smokedPlayerIds,
             createdAt: serverTimestamp(),
             createdBy,

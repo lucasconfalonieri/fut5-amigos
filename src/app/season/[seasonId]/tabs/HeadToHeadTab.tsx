@@ -26,6 +26,12 @@ function toESP(r: Result) {
     return "P";
 }
 
+function venueLabel(m: MatchDoc) {
+    const v = (m as any).venue;
+    if (!v || typeof v !== "string" || !v.trim()) return null;
+    return v.trim();
+}
+
 export default function HeadToHeadTab({
     matches,
     loading,
@@ -198,7 +204,11 @@ export default function HeadToHeadTab({
                                 const diff = Math.abs(x.match.goalDiff);
 
                                 const outcomeA =
-                                    x.resultA === "D" ? "Empate" : `${x.resultA === "W" ? nameA : nameB} ganó por ${diff}`;
+                                    x.resultA === "D"
+                                        ? "Empate"
+                                        : `${x.resultA === "W" ? nameA : nameB} ganó por ${diff}`;
+
+                                const v = venueLabel(x.match);
 
                                 return (
                                     <MiniMatch
@@ -206,6 +216,7 @@ export default function HeadToHeadTab({
                                         date={d}
                                         title={`${formatTime(d)} · ${outcomeA}`}
                                         subtitle={`Diferencia de goles en el partido: ${diff}`}
+                                        venue={v ?? undefined}
                                     />
                                 );
                             })}
@@ -245,6 +256,7 @@ export default function HeadToHeadTab({
                             {computed.together.list.slice(0, 10).map((x) => {
                                 const d = x.match.date;
                                 const diff = Math.abs(x.match.goalDiff);
+                                const v = venueLabel(x.match);
 
                                 return (
                                     <MiniMatch
@@ -253,6 +265,7 @@ export default function HeadToHeadTab({
                                         title={`${formatTime(d)} · Equipo ${x.resultTeam === "W" ? "ganó" : x.resultTeam === "D" ? "empató" : "perdió"
                                             }`}
                                         subtitle={`Diferencia de goles en el partido: ${diff}`}
+                                        venue={v ?? undefined}
                                     />
                                 );
                             })}
@@ -284,14 +297,32 @@ function Stat({ label, value, highlight }: { label: string; value: number; highl
     );
 }
 
-function MiniMatch({ date, title, subtitle }: { date: Date; title: string; subtitle: string }) {
+function MiniMatch({
+    date,
+    title,
+    subtitle,
+    venue,
+}: {
+    date: Date;
+    title: string;
+    subtitle: string;
+    venue?: string;
+}) {
     return (
         <div className="rounded-xl border border-white/10 bg-zinc-950 p-3">
             <div className="flex items-center justify-between gap-3">
                 <div className="text-sm font-medium">{title}</div>
                 <div className="text-xs text-white/50">{formatDayTitle(date)}</div>
             </div>
+
             <div className="mt-1 text-xs text-white/50">{subtitle}</div>
+
+            {venue && (
+                <div className="mt-2 text-xs text-white/60">
+                    <span className="mr-1">📍</span>
+                    <span className="font-medium text-white/75">{venue}</span>
+                </div>
+            )}
         </div>
     );
 }

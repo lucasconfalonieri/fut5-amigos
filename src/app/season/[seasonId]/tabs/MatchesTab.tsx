@@ -168,7 +168,11 @@ export default function MatchesTab({
                                                         </span>
                                                     )}
                                                 </div>
-
+                                                {m.venue ? (
+                                                    <span className="ml-1 rounded-full border border-white/10 bg-zinc-950 px-3 py-1 text-xs text-white/70">
+                                                        📍 {m.venue}
+                                                    </span>
+                                                ) : null}
                                                 <div className="text-xs text-white/50">
                                                     Partido ID: <span className="text-white/70">{m.id.slice(0, 6)}…</span>
                                                 </div>

@@ -9,6 +9,7 @@ export type MatchDoc = {
     goalDiff: number;
     smokedPlayerIds?: string[];
     createdBy?: string;
+    venue?: string | null;
 };
 
 const asNumber = (v: unknown) => {
@@ -33,6 +34,7 @@ export async function listMatches(seasonId: string): Promise<MatchDoc[]> {
             smokedPlayerIds: (data.smokedPlayerIds ?? []) as string[],
             goalDiff: asNumber(data.goalDiff),
             createdBy: data.createdBy,
+            venue: data.venue ?? null,
         };
     });
 }
