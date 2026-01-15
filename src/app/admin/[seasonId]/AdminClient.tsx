@@ -6,6 +6,8 @@ import { onAuthStateChanged, signInWithPopup, signOut, User, signInWithEmailAndP
 import { isSeasonAdmin } from "@/lib/admin";
 import { addPlayer, listPlayers, PlayerDoc, removePlayer, setPlayerActive } from "@/lib/players";
 import { createMatchAndUpdateStandings } from "@/lib/matches";
+import { createAsadoAndUpdateStandings } from "@/lib/asados";
+
 
 export default function AdminClient({ seasonId }: { seasonId: string }) {
     const [user, setUser] = useState<User | null>(null);
@@ -112,6 +114,14 @@ export default function AdminClient({ seasonId }: { seasonId: string }) {
     const activeCount = useMemo(() => players.filter((p) => p.isActive).length, [players]);
 
     const activePlayers = useMemo(() => players.filter((p) => p.isActive), [players]);
+
+    const playerNameById = useMemo(() => {
+        const map = new Map<string, string>();
+        for (const p of players) {
+            map.set(p.id, p.nickname?.trim() || p.name);
+        }
+        return map;
+    }, [players]);
 
     const usedIds = useMemo(() => {
         const ids = [...teamA, ...teamB].filter(Boolean);
@@ -239,6 +249,70 @@ export default function AdminClient({ seasonId }: { seasonId: string }) {
             setMLoading(false);
         }
     };
+
+    const [asadoDate, setAsadoDate] = useState<string>(() => {
+        const d = new Date();
+        d.setHours(22, 0, 0, 0);
+        return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    });
+
+    const [asadoVenue, setAsadoVenue] = useState<string>("");
+    const [presentIds, setPresentIds] = useState<string[]>([]);
+    const [hostId, setHostId] = useState<string>("");
+    const [asadorId, setAsadorId] = useState<string>("");
+
+    const [aLoading, setALoading] = useState(false);
+    const [aErr, setAErr] = useState<string | null>(null);
+    const [aOk, setAOk] = useState<string | null>(null);
+
+    function togglePresent(pid: string, next: boolean) {
+        setAOk(null);
+        setAErr(null);
+
+        setPresentIds((prev) => {
+            const set = new Set(prev);
+            if (next) set.add(pid);
+            else {
+                set.delete(pid);
+                if (hostId === pid) setHostId("");
+                if (asadorId === pid) setAsadorId("");
+            }
+            return Array.from(set);
+        });
+    }
+
+    const submitAsado = async () => {
+        setAErr(null);
+        setAOk(null);
+
+        if (!user) return setAErr("Tenés que estar logueado.");
+        if (!presentIds.length) return setAErr("Marcá al menos 1 presente.");
+
+        try {
+            setALoading(true);
+
+            await createAsadoAndUpdateStandings({
+                seasonId,
+                date: new Date(asadoDate),
+                venue: asadoVenue.trim() || null,
+                presentPlayerIds: presentIds,
+                hostPlayerId: hostId || null,
+                asadorPlayerId: asadorId || null,
+                createdBy: user.uid,
+            });
+
+            setAOk("Asado cargado ✅");
+            setAsadoVenue("");
+            setPresentIds([]);
+            setHostId("");
+            setAsadorId("");
+        } catch (e: any) {
+            setAErr(e?.message ?? "Error cargando asado");
+        } finally {
+            setALoading(false);
+        }
+    };
+
 
     return (
         <main className="min-h-screen bg-transparent text-white">
@@ -624,6 +698,137 @@ export default function AdminClient({ seasonId }: { seasonId: string }) {
                                         </button>
                                     </div>
                                 </div>
+
+                                <div className="card-solid rounded-2xl p-4">
+                                    <h2 className="text-lg font-semibold">3) Cargar asado 🥩</h2>
+                                    <p className="text-sm text-white/60">
+                                        +1 punto por presencia · +1 host · +1 asador
+                                    </p>
+
+                                    {(aErr || aOk) && (
+                                        <div
+                                            className={[
+                                                "mt-4 rounded-xl border p-3 text-sm",
+                                                aErr
+                                                    ? "border-red-500/30 bg-red-500/10 text-red-200"
+                                                    : "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
+                                            ].join(" ")}
+                                        >
+                                            {aErr ?? aOk}
+                                        </div>
+                                    )}
+
+                                    <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                                        <div className="sm:col-span-2">
+                                            <label className="mb-1 block text-xs text-white/60">Fecha y hora</label>
+                                            <input
+                                                type="datetime-local"
+                                                value={asadoDate}
+                                                onChange={(e) => setAsadoDate(e.target.value)}
+                                                className="w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500/30"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="mb-1 block text-xs text-white/60">Lugar (opcional)</label>
+                                            <input
+                                                value={asadoVenue}
+                                                onChange={(e) => setAsadoVenue(e.target.value)}
+                                                placeholder="Ej: Casa de Mati"
+                                                className="w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500/30"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-5 rounded-2xl border border-white/10 bg-zinc-950 p-4">
+                                        <div className="flex flex-wrap items-center justify-between gap-3">
+                                            <h3 className="font-semibold">Presentes</h3>
+                                            <span className="text-xs text-white/50">
+                                                Seleccionados: <span className="font-semibold text-white/80">{presentIds.length}</span>
+                                            </span>
+                                        </div>
+
+                                        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                                            {activePlayers
+                                                .slice()
+                                                .sort((a, b) =>
+                                                    (a.nickname?.trim() || a.name).localeCompare(b.nickname?.trim() || b.name, "es")
+                                                )
+                                                .map((p) => {
+                                                    const checked = presentIds.includes(p.id);
+                                                    return (
+                                                        <label
+                                                            key={p.id}
+                                                            className={[
+                                                                "flex items-center justify-between gap-3 rounded-xl border px-3 py-2 text-sm",
+                                                                checked
+                                                                    ? "border-emerald-500/25 bg-emerald-500/10"
+                                                                    : "border-white/10 bg-zinc-900/40 hover:bg-zinc-900/60",
+                                                            ].join(" ")}
+                                                        >
+                                                            <span className="text-white/90">{p.nickname?.trim() || p.name}</span>
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={checked}
+                                                                onChange={(e) => togglePresent(p.id, e.target.checked)}
+                                                            />
+                                                        </label>
+                                                    );
+                                                })}
+                                        </div>
+
+                                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                                            <div>
+                                                <label className="mb-1 block text-xs text-white/60">Host (opcional)</label>
+                                                <select
+                                                    value={hostId}
+                                                    onChange={(e) => setHostId(e.target.value)}
+                                                    className="w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500/30"
+                                                    disabled={!presentIds.length}
+                                                >
+                                                    <option value="">—</option>
+                                                    {presentIds.map((pid) => (
+                                                        <option key={`host-${pid}`} value={pid}>
+                                                            {playerNameById.get(pid) ?? pid}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            <div>
+                                                <label className="mb-1 block text-xs text-white/60">Asador (opcional)</label>
+                                                <select
+                                                    value={asadorId}
+                                                    onChange={(e) => setAsadorId(e.target.value)}
+                                                    className="w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500/30"
+                                                    disabled={!presentIds.length}
+                                                >
+                                                    <option value="">—</option>
+                                                    {presentIds.map((pid) => (
+                                                        <option key={`asador-${pid}`} value={pid}>
+                                                            {playerNameById.get(pid) ?? pid}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-4 flex items-center justify-between gap-3">
+                                        <div className="text-xs text-white/50">
+                                            Tip: host/asador suman +1 punto extra.
+                                        </div>
+
+                                        <button
+                                            onClick={submitAsado}
+                                            disabled={aLoading || !presentIds.length}
+                                            className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-zinc-950 disabled:opacity-40"
+                                        >
+                                            {aLoading ? "Guardando..." : "Guardar asado"}
+                                        </button>
+                                    </div>
+                                </div>
+
                             </div>
                         )}
                     </>

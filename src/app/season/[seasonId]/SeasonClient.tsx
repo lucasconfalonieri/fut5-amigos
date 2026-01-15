@@ -4,14 +4,19 @@ import { useEffect, useMemo, useState } from "react";
 import { usePlayers } from "@/lib/hooks/usePlayers";
 import { useStandings } from "@/lib/hooks/useStandings";
 import { useMatches } from "@/lib/hooks/useMatches";
+import { useAsados } from "@/lib/hooks/useAsados";
+import { useAsadoStandings } from "@/lib/hooks/useAsadoStandings";
+
 import StandingsTab from "./tabs/StandingsTab";
 import MatchesTab from "./tabs/MatchesTab";
 import HeadToHeadTab from "./tabs/HeadToHeadTab";
+import AsadosTab from "./tabs/AsadosTab";
+
 import { useSearchParams } from "next/navigation";
 import SmokeStatsCard from "./tabs/SmokeStatsCard";
 import Link from "next/link";
 
-type Tab = "table" | "matches" | "h2h";
+type Tab = "table" | "matches" | "h2h" | "asados";
 
 export default function SeasonClient({ seasonId }: { seasonId: string }) {
     const searchParams = useSearchParams();
@@ -21,9 +26,18 @@ export default function SeasonClient({ seasonId }: { seasonId: string }) {
     const { players, playerNameById, loadingPlayers, errorPlayers } = usePlayers(seasonId);
     const { matches, loadingMatches, errorMatches } = useMatches(seasonId, true);
 
+    // ✅ Asados: solo se cargan cuando entrás al tab
+    const asadosEnabled = tab === "asados";
+    const { asados, loadingAsados, errorAsados } = useAsados(seasonId, asadosEnabled);
+    const { rows: asadoRows, loadingAsadoTable, errorAsadoTable } = useAsadoStandings(
+        seasonId,
+        asadosEnabled,
+        playerNameById
+    );
+
     useEffect(() => {
         const t = searchParams.get("tab");
-        if (t === "table" || t === "matches" || t === "h2h") setTab(t);
+        if (t === "table" || t === "matches" || t === "h2h" || t === "asados") setTab(t);
     }, [searchParams]);
 
     const playersCount = players.length;
@@ -55,10 +69,8 @@ export default function SeasonClient({ seasonId }: { seasonId: string }) {
                                     <span className="text-red-200">{errorPlayers}</span>
                                 ) : (
                                     <>
-                                        Jugadores:{" "}
-                                        <span className="font-semibold text-white/75">{playersCount}</span>{" "}
-                                        <span className="text-white/35">·</span>{" "}
-                                        Activos:{" "}
+                                        Jugadores: <span className="font-semibold text-white/75">{playersCount}</span>{" "}
+                                        <span className="text-white/35">·</span> Activos:{" "}
                                         <span className="font-semibold text-white/75">{activeCount}</span>
                                     </>
                                 )}
@@ -114,13 +126,22 @@ export default function SeasonClient({ seasonId }: { seasonId: string }) {
                         >
                             Head-to-head
                         </button>
+
+                        <button
+                            onClick={() => setTab("asados")}
+                            className={[
+                                "tab-pill rounded-full px-4 py-2 text-sm font-medium",
+                                tab === "asados" ? "tab-pill--active" : "",
+                            ].join(" ")}
+                        >
+                            Asados 🥩
+                        </button>
                     </div>
                 </header>
 
                 <section className="mt-6">
                     {tab === "table" && (
                         <>
-                            {/* 👇 Así como lo tenés hoy (sin seasonId prop) */}
                             <StandingsTab rows={rows} loading={loadingTable} error={errorTable} />
 
                             <div className="mt-4">
@@ -152,6 +173,18 @@ export default function SeasonClient({ seasonId }: { seasonId: string }) {
                             loading={loadingMatches}
                             error={errorMatches}
                             players={players}
+                            playerNameById={playerNameById}
+                        />
+                    )}
+
+                    {tab === "asados" && (
+                        <AsadosTab
+                            rows={asadoRows}
+                            loadingTable={loadingAsadoTable}
+                            errorTable={errorAsadoTable}
+                            asados={asados}
+                            loadingAsados={loadingAsados}
+                            errorAsados={errorAsados}
                             playerNameById={playerNameById}
                         />
                     )}
