@@ -31,7 +31,6 @@ export function useAsadoStandings(
             setError(null);
             try {
                 const data = await listAsadoStandings(seasonId);
-                console.log("ASADO STANDINGS (from listAsadoStandings):", data);
                 if (alive) setRowsRaw(data);
             } catch (e: any) {
                 if (alive) setError(e?.message ?? "Error cargando tabla de asados");
@@ -46,7 +45,6 @@ export function useAsadoStandings(
     }, [seasonId, enabled]);
 
     const rows = useMemo<AsadoTableRow[]>(() => {
-        console.log("ASADO rowsRaw (before map):", rowsRaw);
         const mapped = rowsRaw.map((r) => ({
             playerId: r.playerId,
             displayName: playerNameById.get(r.playerId) ?? r.playerId,
@@ -56,7 +54,6 @@ export function useAsadoStandings(
             asador: (r as any).asador ?? 0,
             lastSeenAt: r.lastSeenAt,
         }));
-        console.log("ASADO rows (after map):", mapped);
         mapped.sort((a, b) => {
             if (b.points !== a.points) return b.points - a.points;
             if (b.attended !== a.attended) return b.attended - a.attended;
