@@ -93,8 +93,8 @@ export default function AsadosTab({
                 </div>
             </div>
 
-            <div className="overflow-hidden rounded-2xl card-solid">
-                <table className="w-full text-sm">
+            <div className="overflow-x-auto rounded-2xl card-solid">
+                <table className="min-w-[860px] w-full text-sm">
                     <thead className="bg-emerald-500/10 text-xs uppercase tracking-wide text-white/70">
                         <tr>
                             <th className={thNum}>#</th>
@@ -163,6 +163,7 @@ export default function AsadosTab({
                     </tbody>
                 </table>
             </div>
+
 
             <div className="card-solid rounded-2xl p-4">
                 <h3 className="text-lg font-semibold">Historial de asados</h3>
