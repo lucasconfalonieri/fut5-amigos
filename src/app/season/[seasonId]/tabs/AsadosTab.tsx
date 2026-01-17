@@ -24,7 +24,7 @@ export default function AsadosTab({
 }) {
     const top3 = useMemo(() => rows.slice(0, 3), [rows]);
 
-    if (loadingTable || loadingAsados) return <p className="text-white/60">Cargando asados…</p>;
+    if (loadingTable || loadingAsados) return <p className="text-white/60">Cargando juntadas…</p>;
     if (errorTable) return <p className="text-red-200">{errorTable}</p>;
     if (errorAsados) return <p className="text-red-200">{errorAsados}</p>;
 
@@ -40,7 +40,7 @@ export default function AsadosTab({
             <div className="card-solid rounded-2xl p-4">
                 <div className="flex items-center justify-between gap-3">
                     <div>
-                        <h2 className="text-lg font-semibold">Asado League 🥩</h2>
+                        <h2 className="text-lg font-semibold">Juntadas League 🥩</h2>
                         <p className="text-sm text-white/60">1 punto por presencia +1 anfitrión +1 asador</p>
                     </div>
                 </div>
@@ -65,7 +65,7 @@ export default function AsadosTab({
 
                                 <div className="mt-3 grid grid-cols-3 gap-2">
                                     <div className="rounded-xl border border-white/10 bg-zinc-950 p-2">
-                                        <div className="text-[11px] text-white/50">Asados</div>
+                                        <div className="text-[11px] text-white/50">Juntadas</div>
                                         <div className="mt-0.5 text-sm font-semibold tabular-nums text-white/85">
                                             {r.attended ?? 0}
                                         </div>
@@ -89,7 +89,7 @@ export default function AsadosTab({
                         );
                     })}
 
-                    {top3.length === 0 && <p className="text-white/60">Todavía no hay asados cargados.</p>}
+                    {top3.length === 0 && <p className="text-white/60">Todavía no hay juntadas cargadas.</p>}
                 </div>
             </div>
 
@@ -102,7 +102,7 @@ export default function AsadosTab({
 
                             <th className={`${thNum} bg-emerald-500/10 text-emerald-100`}>PTS</th>
 
-                            <th className={thNum}>Asados</th>
+                            <th className={thNum}>Juntadas</th>
                             <th className={thNum}>Anfitrión</th>
                             <th className={thNum}>Asador</th>
 
@@ -166,12 +166,12 @@ export default function AsadosTab({
 
 
             <div className="card-solid rounded-2xl p-4">
-                <h3 className="text-lg font-semibold">Historial de asados</h3>
+                <h3 className="text-lg font-semibold">Historial de juntadas</h3>
                 <p className="text-sm text-white/60">Ordenado por fecha (más reciente primero)</p>
 
                 <div className="mt-4 space-y-3">
                     {asados.length === 0 ? (
-                        <p className="text-white/60">Todavía no hay asados cargados.</p>
+                        <p className="text-white/60">Todavía no hay juntadas cargadas.</p>
                     ) : (
                         asados.map((a) => {
                             const host = a.hostPlayerId ? playerNameById.get(a.hostPlayerId) ?? a.hostPlayerId : null;

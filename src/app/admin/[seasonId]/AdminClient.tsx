@@ -301,13 +301,13 @@ export default function AdminClient({ seasonId }: { seasonId: string }) {
                 createdBy: user.uid,
             });
 
-            setAOk("Asado cargado ✅");
+            setAOk("Juntada cargada ✅");
             setAsadoVenue("");
             setPresentIds([]);
             setHostId("");
             setAsadorId("");
         } catch (e: any) {
-            setAErr(e?.message ?? "Error cargando asado");
+            setAErr(e?.message ?? "Error cargando juntada");
         } finally {
             setALoading(false);
         }
@@ -700,7 +700,7 @@ export default function AdminClient({ seasonId }: { seasonId: string }) {
                                 </div>
 
                                 <div className="card-solid rounded-2xl p-4">
-                                    <h2 className="text-lg font-semibold">3) Cargar asado 🥩</h2>
+                                    <h2 className="text-lg font-semibold">3) Cargar juntada 🥩</h2>
                                     <p className="text-sm text-white/60">
                                         +1 punto por presencia · +1 host · +1 asador
                                     </p>
@@ -824,7 +824,7 @@ export default function AdminClient({ seasonId }: { seasonId: string }) {
                                             disabled={aLoading || !presentIds.length}
                                             className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-zinc-950 disabled:opacity-40"
                                         >
-                                            {aLoading ? "Guardando..." : "Guardar asado"}
+                                            {aLoading ? "Guardando..." : "Guardar juntada"}
                                         </button>
                                     </div>
                                 </div>

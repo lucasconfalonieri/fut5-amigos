@@ -26,7 +26,6 @@ export default function SeasonClient({ seasonId }: { seasonId: string }) {
     const { players, playerNameById, loadingPlayers, errorPlayers } = usePlayers(seasonId);
     const { matches, loadingMatches, errorMatches } = useMatches(seasonId, true);
 
-    // ✅ Asados: solo se cargan cuando entrás al tab
     const asadosEnabled = tab === "asados";
     const { asados, loadingAsados, errorAsados } = useAsados(seasonId, asadosEnabled);
     const { rows: asadoRows, loadingAsadoTable, errorAsadoTable } = useAsadoStandings(
@@ -134,7 +133,7 @@ export default function SeasonClient({ seasonId }: { seasonId: string }) {
                                 tab === "asados" ? "tab-pill--active" : "",
                             ].join(" ")}
                         >
-                            Asados 🥩
+                            Juntadas 🥩
                         </button>
                     </div>
                 </header>

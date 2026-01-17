@@ -60,7 +60,7 @@ export default function Home() {
             {/* side card (feature highlight) */}
             <div className="card-solid rounded-3xl p-6">
               <div className="text-xs font-semibold text-emerald-200/90">Lo nuevo</div>
-              <div className="mt-2 text-2xl font-extrabold tracking-tight">Asado League 🥩</div>
+              <div className="mt-2 text-2xl font-extrabold tracking-tight">Juntadas League 🥩</div>
               <p className="mt-2 text-sm text-white/60">
                 Puntos por presencia + bonus por anfitrión y asador. Historial completo por fecha.
               </p>

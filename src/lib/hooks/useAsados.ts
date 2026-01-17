@@ -19,7 +19,7 @@ export function useAsados(seasonId: string, enabled: boolean) {
                 const data = await listAsados(seasonId);
                 if (alive) setAsados(data);
             } catch (e: any) {
-                if (alive) setError(e?.message ?? "Error cargando asados");
+                if (alive) setError(e?.message ?? "Error cargando juntadas");
             } finally {
                 if (alive) setLoading(false);
             }

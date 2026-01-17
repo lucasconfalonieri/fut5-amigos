@@ -33,7 +33,7 @@ export function useAsadoStandings(
                 const data = await listAsadoStandings(seasonId);
                 if (alive) setRowsRaw(data);
             } catch (e: any) {
-                if (alive) setError(e?.message ?? "Error cargando tabla de asados");
+                if (alive) setError(e?.message ?? "Error cargando tabla de juntadas");
             } finally {
                 if (alive) setLoading(false);
             }
