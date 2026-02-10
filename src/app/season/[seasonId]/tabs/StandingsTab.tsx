@@ -77,7 +77,7 @@ export default function StandingsTab({
 
     return (
         <div className="overflow-x-auto rounded-2xl card-solid">
-            <table className="min-w-[860px] w-full text-sm">
+            <table className="min-w-[920px] w-full text-sm">
                 <thead className="bg-emerald-500/10 text-xs uppercase tracking-wide text-white/70">
                     <tr>
                         <th className={thNum}>#</th>
@@ -90,6 +90,7 @@ export default function StandingsTab({
                         <th className={thNum}>PG</th>
                         <th className={thNum}>PE</th>
                         <th className={thNum}>PP</th>
+                        <th className={thNum}>GF</th>
 
                         <th className={thCenter}>Racha</th>
                         <th className={thCenter}>Últimos 5</th>
@@ -130,6 +131,7 @@ export default function StandingsTab({
                                 <td className={tdNum}>{r.wins}</td>
                                 <td className={tdNum}>{r.draws}</td>
                                 <td className={tdNum}>{r.losses}</td>
+                                <td className={tdNum}>{r.goalDiff}</td>
 
                                 <td className={`${tdCenter} text-white/80`}>{streakText}</td>
 
