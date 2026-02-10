@@ -19,6 +19,7 @@ export type TableRow = {
     wins: number;
     draws: number;
     losses: number;
+    goalDiff: number;
     points: number;
     last5: string;
     streak: string;
@@ -55,9 +56,28 @@ export async function fetchSeasonTable(seasonId: string): Promise<TableRow[]> {
     const standingsRef = collection(db, "seasons", seasonId, "standings");
     const standingsSnap = await getDocs(standingsRef);
 
+    const matchesRef = collection(db, "seasons", seasonId, "matches");
+    const matchesSnap = await getDocs(matchesRef);
+
     const standingsMap = new Map<string, Standing>();
     for (const d of standingsSnap.docs) {
         standingsMap.set(d.id, safeStanding(d.data()));
+    }
+
+    const goalDiffMap = new Map<string, number>();
+    for (const d of matchesSnap.docs) {
+        const m = d.data() as any;
+        const teamA = Array.isArray(m.teamA) ? m.teamA : [];
+        const teamB = Array.isArray(m.teamB) ? m.teamB : [];
+        const diff = asNumber(m.goalDiff);
+
+        for (const playerId of teamA) {
+            goalDiffMap.set(playerId, (goalDiffMap.get(playerId) ?? 0) + diff);
+        }
+
+        for (const playerId of teamB) {
+            goalDiffMap.set(playerId, (goalDiffMap.get(playerId) ?? 0) - diff);
+        }
     }
 
     const rows: TableRow[] = playersSnap.docs.map((d) => {
@@ -76,6 +96,7 @@ export async function fetchSeasonTable(seasonId: string): Promise<TableRow[]> {
             wins: st.wins,
             draws: st.draws,
             losses: st.losses,
+            goalDiff: goalDiffMap.get(d.id) ?? 0,
             points: st.points,
             last5,
             streak,
