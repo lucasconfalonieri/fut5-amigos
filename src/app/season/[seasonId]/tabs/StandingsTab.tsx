@@ -66,8 +66,8 @@ export default function StandingsTab({
     if (error) return <p className="text-red-200">{error}</p>;
     if (!rows.length) return <p className="text-white/60">No hay datos todavía.</p>;
 
-    const thBase = "px-2 sm:px-4 py-3 align-middle whitespace-nowrap";
-    const tdBase = "px-2 sm:px-4 py-3 align-middle";
+    const thBase = "px-4 py-3 align-middle whitespace-nowrap";
+    const tdBase = "px-4 py-3 align-middle";
     const thNum = `${thBase} text-center`;
     const tdNum = `${tdBase} text-center tabular-nums`;
     const thLeft = `${thBase} text-left`;
@@ -76,8 +76,8 @@ export default function StandingsTab({
     const tdCenter = `${tdBase} text-center`;
 
     return (
-        <div className="overflow-hidden rounded-2xl card-solid">
-            <table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-2xl card-solid">
+            <table className="min-w-[700px] w-full text-sm">
                 <thead className="bg-emerald-500/10 text-xs uppercase tracking-wide text-white/70">
                     <tr>
                         <th className={thNum}>#</th>
