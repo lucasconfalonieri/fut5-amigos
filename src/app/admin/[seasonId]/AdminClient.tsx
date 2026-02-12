@@ -1,12 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { auth, googleProvider } from "@/lib/firebase";
 import { onAuthStateChanged, signInWithPopup, signOut, User, signInWithEmailAndPassword } from "firebase/auth";
 import { isSeasonAdmin } from "@/lib/admin";
 import { addPlayer, listPlayers, PlayerDoc, removePlayer, setPlayerActive } from "@/lib/players";
 import { createMatchAndUpdateStandings } from "@/lib/matches";
 import { createAsadoAndUpdateStandings } from "@/lib/asados";
+import { listMatches, MatchDoc } from "@/lib/matchesRead";
+import { listAsados, AsadoDoc } from "@/lib/asadosRead";
+import { deleteMatchAndRebuildStandings } from "@/lib/deleteMatch";
+import { deleteAsadoAndRebuildStandings } from "@/lib/deleteAsado";
+import ConfirmModal from "@/components/ConfirmModal";
 
 
 export default function AdminClient({ seasonId }: { seasonId: string }) {
@@ -313,6 +318,90 @@ export default function AdminClient({ seasonId }: { seasonId: string }) {
         }
     };
 
+    // ── Gestionar partidos ──────────────────────────────────────────────
+    const [matches, setMatches] = useState<MatchDoc[]>([]);
+    const [matchesLoaded, setMatchesLoaded] = useState(false);
+    const [matchesLoading, setMatchesLoading] = useState(false);
+    const [matchesErr, setMatchesErr] = useState<string | null>(null);
+    const [deletingMatchId, setDeletingMatchId] = useState<string | null>(null);
+    const [deleteMatchLoading, setDeleteMatchLoading] = useState(false);
+
+    const refreshMatches = useCallback(async () => {
+        setMatchesErr(null);
+        setMatchesLoading(true);
+        try {
+            const data = await listMatches(seasonId);
+            setMatches(data);
+            setMatchesLoaded(true);
+        } catch (e: any) {
+            setMatchesErr(e?.message ?? "Error cargando partidos");
+        } finally {
+            setMatchesLoading(false);
+        }
+    }, [seasonId]);
+
+    const confirmDeleteMatch = async () => {
+        if (!deletingMatchId) return;
+        setDeleteMatchLoading(true);
+        try {
+            await deleteMatchAndRebuildStandings(seasonId, deletingMatchId);
+            setMatches((prev) => prev.filter((m) => m.id !== deletingMatchId));
+            setDeletingMatchId(null);
+        } catch (e: any) {
+            setMatchesErr(e?.message ?? "Error eliminando partido");
+            setDeletingMatchId(null);
+        } finally {
+            setDeleteMatchLoading(false);
+        }
+    };
+
+    // ── Gestionar juntadas ──────────────────────────────────────────────
+    const [asados, setAsados] = useState<AsadoDoc[]>([]);
+    const [asadosLoaded, setAsadosLoaded] = useState(false);
+    const [asadosLoading, setAsadosLoading] = useState(false);
+    const [asadosErr, setAsadosErr] = useState<string | null>(null);
+    const [deletingAsadoId, setDeletingAsadoId] = useState<string | null>(null);
+    const [deleteAsadoLoading, setDeleteAsadoLoading] = useState(false);
+
+    const refreshAsados = useCallback(async () => {
+        setAsadosErr(null);
+        setAsadosLoading(true);
+        try {
+            const data = await listAsados(seasonId);
+            setAsados(data);
+            setAsadosLoaded(true);
+        } catch (e: any) {
+            setAsadosErr(e?.message ?? "Error cargando juntadas");
+        } finally {
+            setAsadosLoading(false);
+        }
+    }, [seasonId]);
+
+    const confirmDeleteAsado = async () => {
+        if (!deletingAsadoId) return;
+        setDeleteAsadoLoading(true);
+        try {
+            await deleteAsadoAndRebuildStandings(seasonId, deletingAsadoId);
+            setAsados((prev) => prev.filter((a) => a.id !== deletingAsadoId));
+            setDeletingAsadoId(null);
+        } catch (e: any) {
+            setAsadosErr(e?.message ?? "Error eliminando juntada");
+            setDeletingAsadoId(null);
+        } finally {
+            setDeleteAsadoLoading(false);
+        }
+    };
+
+    const fmtDate = (d: Date) =>
+        d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "2-digit" });
+    const fmtTime = (d: Date) =>
+        d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+
+    function matchResultLabel(goalDiff: number) {
+        if (goalDiff > 0) return { text: `A ganó (+${goalDiff})`, cls: "text-emerald-300" };
+        if (goalDiff < 0) return { text: `B ganó (${goalDiff})`, cls: "text-emerald-300" };
+        return { text: "Empate", cls: "text-yellow-200" };
+    }
 
     return (
         <main className="min-h-screen bg-transparent text-white">
@@ -529,311 +618,544 @@ export default function AdminClient({ seasonId }: { seasonId: string }) {
                                     </div>
                                 </details>
 
-                                <div className="card-solid rounded-2xl p-4">
-                                    <h2 className="text-lg font-semibold">2) Cargar partido (5v5)</h2>
-                                    <p className="text-sm text-white/60">
-                                        Guardá fecha, equipos y diferencia de gol. La tabla se actualiza automáticamente.
-                                    </p>
-
-                                    {(mErr || mOk) && (
-                                        <div
-                                            className={[
-                                                "mt-4 rounded-xl border p-3 text-sm",
-                                                mErr
-                                                    ? "border-red-500/30 bg-red-500/10 text-red-200"
-                                                    : "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
-                                            ].join(" ")}
-                                        >
-                                            {mErr ?? mOk}
+                                <details className="card-solid rounded-2xl" open={false}>
+                                    <summary className="cursor-pointer select-none list-none px-4 py-4">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div>
+                                                <h2 className="text-lg font-semibold">2) Cargar partido (5v5)</h2>
+                                                <p className="text-sm text-white/60">
+                                                    Guardá fecha, equipos y diferencia de gol.
+                                                </p>
+                                            </div>
+                                            <span className="text-xs text-white/50">▼</span>
                                         </div>
-                                    )}
+                                    </summary>
 
-                                    <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                                        <div className="sm:col-span-2">
-                                            <label className="mb-1 block text-xs text-white/60">Fecha y hora</label>
-                                            <input
-                                                type="datetime-local"
-                                                value={matchDate}
-                                                onChange={(e) => setMatchDate(e.target.value)}
-                                                className="w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500/30"
-                                            />
-                                        </div>
-                                        <div className="sm:col-span-2">
-                                            <label className="mb-1 block text-xs text-white/60">Cancha (opcional)</label>
-                                            <input
-                                                value={venue}
-                                                onChange={(e) => setVenue(e.target.value)}
-                                                placeholder="Ej: Sarmiento / CABU..."
-                                                className="w-full rounded-xl border border-white/10 bg-zinc-900/60 px-3 py-2 text-sm outline-none focus:border-emerald-500/30"
-                                            />
-                                        </div>
+                                    <div className="px-4 pb-4">
 
-                                        <div>
-                                            <label className="mb-1 block text-xs text-white/60">Resultado</label>
-                                            <select
-                                                value={winner}
-                                                onChange={(e) => {
-                                                    const v = e.target.value as Winner;
-                                                    setWinner(v);
-                                                    if (v === "D") setGoalDiffAbs(0);
-                                                }}
-                                                className="w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500/30"
+                                        {(mErr || mOk) && (
+                                            <div
+                                                className={[
+                                                    "mt-4 rounded-xl border p-3 text-sm",
+                                                    mErr
+                                                        ? "border-red-500/30 bg-red-500/10 text-red-200"
+                                                        : "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
+                                                ].join(" ")}
                                             >
-                                                <option value="A">Gana Team A</option>
-                                                <option value="D">Empate</option>
-                                                <option value="B">Gana Team B</option>
-                                            </select>
+                                                {mErr ?? mOk}
+                                            </div>
+                                        )}
 
-                                            <label className="mb-1 mt-3 block text-xs text-white/60">Diferencia</label>
-                                            <input
-                                                type="number"
-                                                min={0}
-                                                value={goalDiffAbs}
-                                                disabled={winner === "D"}
-                                                onChange={(e) => setGoalDiffAbs(Number(e.target.value))}
-                                                className="w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500/30"
-                                            />
-
-                                            <p className="mt-1 text-xs text-white/40">
-                                                {winner === "D"
-                                                    ? "Empate: diferencia 0"
-                                                    : `Diferencia positiva. Se guarda como ${computedGoalDiff} (A-B)`}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <div className="mt-5 grid gap-4 md:grid-cols-2">
-                                        <div className="rounded-2xl border border-white/10 bg-zinc-950 p-4">
-                                            <div className="mb-3 flex items-center justify-between">
-                                                <h3 className="font-semibold">Equipo A</h3>
-                                                <span className="text-xs text-white/50">5 jugadores</span>
+                                        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                                            <div className="sm:col-span-2">
+                                                <label className="mb-1 block text-xs text-white/60">Fecha y hora</label>
+                                                <input
+                                                    type="datetime-local"
+                                                    value={matchDate}
+                                                    onChange={(e) => setMatchDate(e.target.value)}
+                                                    className="w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500/30"
+                                                />
+                                            </div>
+                                            <div className="sm:col-span-2">
+                                                <label className="mb-1 block text-xs text-white/60">Cancha (opcional)</label>
+                                                <input
+                                                    value={venue}
+                                                    onChange={(e) => setVenue(e.target.value)}
+                                                    placeholder="Ej: Sarmiento / CABU..."
+                                                    className="w-full rounded-xl border border-white/10 bg-zinc-900/60 px-3 py-2 text-sm outline-none focus:border-emerald-500/30"
+                                                />
                                             </div>
 
-                                            <div className="space-y-2">
-                                                {teamA.map((val, idx) => (
-                                                    <div key={`A-${idx}`} className="flex items-center gap-3">
-                                                        <select
-                                                            value={val}
-                                                            onChange={(e) => setTeamSlot("A", idx, e.target.value)}
-                                                            className="w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500/30"
-                                                        >
-                                                            <option value="">Elegir jugador {idx + 1}</option>
-                                                            {optionsFor("A", idx).map((p) => (
-                                                                <option key={p.id} value={p.id}>
-                                                                    {p.nickname?.trim() || p.name}
-                                                                </option>
-                                                            ))}
-                                                        </select>
+                                            <div>
+                                                <label className="mb-1 block text-xs text-white/60">Resultado</label>
+                                                <select
+                                                    value={winner}
+                                                    onChange={(e) => {
+                                                        const v = e.target.value as Winner;
+                                                        setWinner(v);
+                                                        if (v === "D") setGoalDiffAbs(0);
+                                                    }}
+                                                    className="w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500/30"
+                                                >
+                                                    <option value="A">Gana Team A</option>
+                                                    <option value="D">Empate</option>
+                                                    <option value="B">Gana Team B</option>
+                                                </select>
 
-                                                        <label className="flex shrink-0 items-center gap-2 rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-xs text-white/70">
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={smokedA[idx]}
-                                                                disabled={!val}
-                                                                onChange={(e) =>
-                                                                    setSmokedA((prev) => prev.map((v, i) => (i === idx ? e.target.checked : v)))
-                                                                }
-                                                            />
-                                                            <span>Fumó 🚬</span>
-                                                        </label>
-                                                    </div>
-                                                ))}
+                                                <label className="mb-1 mt-3 block text-xs text-white/60">Diferencia</label>
+                                                <input
+                                                    type="number"
+                                                    min={0}
+                                                    value={goalDiffAbs}
+                                                    disabled={winner === "D"}
+                                                    onChange={(e) => setGoalDiffAbs(Number(e.target.value))}
+                                                    className="w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500/30"
+                                                />
+
+                                                <p className="mt-1 text-xs text-white/40">
+                                                    {winner === "D"
+                                                        ? "Empate: diferencia 0"
+                                                        : `Diferencia positiva. Se guarda como ${computedGoalDiff} (A-B)`}
+                                                </p>
                                             </div>
                                         </div>
 
-                                        <div className="rounded-2xl border border-white/10 bg-zinc-950 p-4">
-                                            <div className="mb-3 flex items-center justify-between">
-                                                <h3 className="font-semibold">Equipo B</h3>
-                                                <span className="text-xs text-white/50">5 jugadores</span>
+                                        <div className="mt-5 grid gap-4 md:grid-cols-2">
+                                            <div className="rounded-2xl border border-white/10 bg-zinc-950 p-4">
+                                                <div className="mb-3 flex items-center justify-between">
+                                                    <h3 className="font-semibold">Equipo A</h3>
+                                                    <span className="text-xs text-white/50">5 jugadores</span>
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    {teamA.map((val, idx) => (
+                                                        <div key={`A-${idx}`} className="flex items-center gap-3">
+                                                            <select
+                                                                value={val}
+                                                                onChange={(e) => setTeamSlot("A", idx, e.target.value)}
+                                                                className="w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500/30"
+                                                            >
+                                                                <option value="">Elegir jugador {idx + 1}</option>
+                                                                {optionsFor("A", idx).map((p) => (
+                                                                    <option key={p.id} value={p.id}>
+                                                                        {p.nickname?.trim() || p.name}
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+
+                                                            <label className="flex shrink-0 items-center gap-2 rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-xs text-white/70">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={smokedA[idx]}
+                                                                    disabled={!val}
+                                                                    onChange={(e) =>
+                                                                        setSmokedA((prev) => prev.map((v, i) => (i === idx ? e.target.checked : v)))
+                                                                    }
+                                                                />
+                                                                <span>Fumó 🚬</span>
+                                                            </label>
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
 
-                                            <div className="space-y-2">
-                                                {teamB.map((val, idx) => (
-                                                    <div key={`B-${idx}`} className="flex items-center gap-3">
-                                                        <select
-                                                            value={val}
-                                                            onChange={(e) => setTeamSlot("B", idx, e.target.value)}
-                                                            className="w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500/30"
-                                                        >
-                                                            <option value="">Elegir jugador {idx + 1}</option>
-                                                            {optionsFor("B", idx).map((p) => (
-                                                                <option key={p.id} value={p.id}>
-                                                                    {p.nickname?.trim() || p.name}
-                                                                </option>
-                                                            ))}
-                                                        </select>
+                                            <div className="rounded-2xl border border-white/10 bg-zinc-950 p-4">
+                                                <div className="mb-3 flex items-center justify-between">
+                                                    <h3 className="font-semibold">Equipo B</h3>
+                                                    <span className="text-xs text-white/50">5 jugadores</span>
+                                                </div>
 
-                                                        <label className="flex shrink-0 items-center gap-2 rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-xs text-white/70">
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={smokedB[idx]}
-                                                                disabled={!val}
-                                                                onChange={(e) =>
-                                                                    setSmokedB((prev) => prev.map((v, i) => (i === idx ? e.target.checked : v)))
-                                                                }
-                                                            />
-                                                            <span>Fumó 🚬</span>
-                                                        </label>
-                                                    </div>
-                                                ))}
+                                                <div className="space-y-2">
+                                                    {teamB.map((val, idx) => (
+                                                        <div key={`B-${idx}`} className="flex items-center gap-3">
+                                                            <select
+                                                                value={val}
+                                                                onChange={(e) => setTeamSlot("B", idx, e.target.value)}
+                                                                className="w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500/30"
+                                                            >
+                                                                <option value="">Elegir jugador {idx + 1}</option>
+                                                                {optionsFor("B", idx).map((p) => (
+                                                                    <option key={p.id} value={p.id}>
+                                                                        {p.nickname?.trim() || p.name}
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+
+                                                            <label className="flex shrink-0 items-center gap-2 rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-xs text-white/70">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={smokedB[idx]}
+                                                                    disabled={!val}
+                                                                    onChange={(e) =>
+                                                                        setSmokedB((prev) => prev.map((v, i) => (i === idx ? e.target.checked : v)))
+                                                                    }
+                                                                />
+                                                                <span>Fumó 🚬</span>
+                                                            </label>
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    <div className="mt-4 flex items-center justify-between gap-3">
-                                        <div className="text-xs text-white/50">
-                                            Activos disponibles:{" "}
-                                            <span className="font-semibold text-white/80">{activePlayers.length}</span>
-                                            {!canSubmitMatch && (
-                                                <span className="ml-2 text-white/40">— completá 5 y 5 sin repetidos</span>
-                                            )}
-                                        </div>
+                                        <div className="mt-4 flex items-center justify-between gap-3">
+                                            <div className="text-xs text-white/50">
+                                                Activos disponibles:{" "}
+                                                <span className="font-semibold text-white/80">{activePlayers.length}</span>
+                                                {!canSubmitMatch && (
+                                                    <span className="ml-2 text-white/40">— completá 5 y 5 sin repetidos</span>
+                                                )}
+                                            </div>
 
-                                        <button
-                                            onClick={submitMatch}
-                                            disabled={!canSubmitMatch || mLoading}
-                                            className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-zinc-950 disabled:opacity-40"
-                                        >
-                                            {mLoading ? "Guardando..." : "Guardar partido"}
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div className="card-solid rounded-2xl p-4">
-                                    <h2 className="text-lg font-semibold">3) Cargar juntada 🥩</h2>
-                                    <p className="text-sm text-white/60">
-                                        +1 punto por presencia · +1 host · +1 asador
-                                    </p>
-
-                                    {(aErr || aOk) && (
-                                        <div
-                                            className={[
-                                                "mt-4 rounded-xl border p-3 text-sm",
-                                                aErr
-                                                    ? "border-red-500/30 bg-red-500/10 text-red-200"
-                                                    : "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
-                                            ].join(" ")}
-                                        >
-                                            {aErr ?? aOk}
-                                        </div>
-                                    )}
-
-                                    <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                                        <div className="sm:col-span-2">
-                                            <label className="mb-1 block text-xs text-white/60">Fecha y hora</label>
-                                            <input
-                                                type="datetime-local"
-                                                value={asadoDate}
-                                                onChange={(e) => setAsadoDate(e.target.value)}
-                                                className="w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500/30"
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <label className="mb-1 block text-xs text-white/60">Lugar (opcional)</label>
-                                            <input
-                                                value={asadoVenue}
-                                                onChange={(e) => setAsadoVenue(e.target.value)}
-                                                placeholder="Ej: Casa de Mati"
-                                                className="w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500/30"
-                                            />
+                                            <button
+                                                onClick={submitMatch}
+                                                disabled={!canSubmitMatch || mLoading}
+                                                className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-zinc-950 disabled:opacity-40"
+                                            >
+                                                {mLoading ? "Guardando..." : "Guardar partido"}
+                                            </button>
                                         </div>
                                     </div>
+                                </details>
 
-                                    <div className="mt-5 rounded-2xl border border-white/10 bg-zinc-950 p-4">
-                                        <div className="flex flex-wrap items-center justify-between gap-3">
-                                            <h3 className="font-semibold">Presentes</h3>
-                                            <span className="text-xs text-white/50">
-                                                Seleccionados: <span className="font-semibold text-white/80">{presentIds.length}</span>
-                                            </span>
+                                <details className="card-solid rounded-2xl" open={false}>
+                                    <summary className="cursor-pointer select-none list-none px-4 py-4">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div>
+                                                <h2 className="text-lg font-semibold">3) Cargar juntada 🥩</h2>
+                                                <p className="text-sm text-white/60">
+                                                    +1 punto por presencia · +1 host · +1 asador
+                                                </p>
+                                            </div>
+                                            <span className="text-xs text-white/50">▼</span>
+                                        </div>
+                                    </summary>
+
+                                    <div className="px-4 pb-4">
+
+                                        {(aErr || aOk) && (
+                                            <div
+                                                className={[
+                                                    "mt-4 rounded-xl border p-3 text-sm",
+                                                    aErr
+                                                        ? "border-red-500/30 bg-red-500/10 text-red-200"
+                                                        : "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
+                                                ].join(" ")}
+                                            >
+                                                {aErr ?? aOk}
+                                            </div>
+                                        )}
+
+                                        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                                            <div className="sm:col-span-2">
+                                                <label className="mb-1 block text-xs text-white/60">Fecha y hora</label>
+                                                <input
+                                                    type="datetime-local"
+                                                    value={asadoDate}
+                                                    onChange={(e) => setAsadoDate(e.target.value)}
+                                                    className="w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500/30"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="mb-1 block text-xs text-white/60">Lugar (opcional)</label>
+                                                <input
+                                                    value={asadoVenue}
+                                                    onChange={(e) => setAsadoVenue(e.target.value)}
+                                                    placeholder="Ej: Casa de Mati"
+                                                    className="w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500/30"
+                                                />
+                                            </div>
                                         </div>
 
-                                        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                                            {activePlayers
-                                                .slice()
-                                                .sort((a, b) =>
-                                                    (a.nickname?.trim() || a.name).localeCompare(b.nickname?.trim() || b.name, "es")
-                                                )
-                                                .map((p) => {
-                                                    const checked = presentIds.includes(p.id);
+                                        <div className="mt-5 rounded-2xl border border-white/10 bg-zinc-950 p-4">
+                                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                                <h3 className="font-semibold">Presentes</h3>
+                                                <span className="text-xs text-white/50">
+                                                    Seleccionados: <span className="font-semibold text-white/80">{presentIds.length}</span>
+                                                </span>
+                                            </div>
+
+                                            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                                                {activePlayers
+                                                    .slice()
+                                                    .sort((a, b) =>
+                                                        (a.nickname?.trim() || a.name).localeCompare(b.nickname?.trim() || b.name, "es")
+                                                    )
+                                                    .map((p) => {
+                                                        const checked = presentIds.includes(p.id);
+                                                        return (
+                                                            <label
+                                                                key={p.id}
+                                                                className={[
+                                                                    "flex items-center justify-between gap-3 rounded-xl border px-3 py-2 text-sm",
+                                                                    checked
+                                                                        ? "border-emerald-500/25 bg-emerald-500/10"
+                                                                        : "border-white/10 bg-zinc-900/40 hover:bg-zinc-900/60",
+                                                                ].join(" ")}
+                                                            >
+                                                                <span className="text-white/90">{p.nickname?.trim() || p.name}</span>
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={checked}
+                                                                    onChange={(e) => togglePresent(p.id, e.target.checked)}
+                                                                />
+                                                            </label>
+                                                        );
+                                                    })}
+                                            </div>
+
+                                            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                                                <div>
+                                                    <label className="mb-1 block text-xs text-white/60">Host (opcional)</label>
+                                                    <select
+                                                        value={hostId}
+                                                        onChange={(e) => setHostId(e.target.value)}
+                                                        className="w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500/30"
+                                                        disabled={!presentIds.length}
+                                                    >
+                                                        <option value="">—</option>
+                                                        {presentIds.map((pid) => (
+                                                            <option key={`host-${pid}`} value={pid}>
+                                                                {playerNameById.get(pid) ?? pid}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+
+                                                <div>
+                                                    <label className="mb-1 block text-xs text-white/60">Asador (opcional)</label>
+                                                    <select
+                                                        value={asadorId}
+                                                        onChange={(e) => setAsadorId(e.target.value)}
+                                                        className="w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500/30"
+                                                        disabled={!presentIds.length}
+                                                    >
+                                                        <option value="">—</option>
+                                                        {presentIds.map((pid) => (
+                                                            <option key={`asador-${pid}`} value={pid}>
+                                                                {playerNameById.get(pid) ?? pid}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-4 flex items-center justify-between gap-3">
+                                            <div className="text-xs text-white/50">
+                                                Tip: host/asador suman +1 punto extra.
+                                            </div>
+
+                                            <button
+                                                onClick={submitAsado}
+                                                disabled={aLoading || !presentIds.length}
+                                                className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-zinc-950 disabled:opacity-40"
+                                            >
+                                                {aLoading ? "Guardando..." : "Guardar juntada"}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </details>
+
+                                {/* ────────── 4) Gestionar partidos ────────── */}
+                                <details
+                                    className="card-solid rounded-2xl"
+                                    onToggle={(e) => {
+                                        if ((e.target as HTMLDetailsElement).open && !matchesLoaded) {
+                                            refreshMatches();
+                                        }
+                                    }}
+                                >
+                                    <summary className="cursor-pointer select-none list-none px-4 py-4">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div>
+                                                <h2 className="text-lg font-semibold">4) Gestionar partidos</h2>
+                                                <p className="text-sm text-white/60">
+                                                    {matchesLoaded
+                                                        ? <>{matches.length} partido{matches.length !== 1 && "s"} cargado{matches.length !== 1 && "s"}</>
+                                                        : "Expandí para ver los partidos"}
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                {matchesLoaded && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); refreshMatches(); }}
+                                                        className="rounded-full border border-white/10 bg-zinc-950 px-4 py-2 text-sm hover:border-emerald-500/30 hover:bg-zinc-900"
+                                                        disabled={matchesLoading}
+                                                    >
+                                                        {matchesLoading ? "Cargando..." : "Refrescar"}
+                                                    </button>
+                                                )}
+                                                <span className="text-xs text-white/50">▼</span>
+                                            </div>
+                                        </div>
+                                    </summary>
+
+                                    <div className="px-4 pb-4">
+                                        {matchesErr && (
+                                            <div className="mt-2 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
+                                                {matchesErr}
+                                            </div>
+                                        )}
+
+                                        {matchesLoading && !matchesLoaded && (
+                                            <p className="mt-4 text-white/60 text-sm">Cargando partidos…</p>
+                                        )}
+
+                                        {matchesLoaded && matches.length === 0 && (
+                                            <p className="mt-4 text-white/60 text-sm">No hay partidos cargados.</p>
+                                        )}
+
+                                        {matchesLoaded && matches.length > 0 && (
+                                            <div className="mt-4 space-y-2">
+                                                {matches.map((m) => {
+                                                    const res = matchResultLabel(m.goalDiff);
+                                                    const teamANames = m.teamA.map((id) => playerNameById.get(id) ?? id).join(", ");
+                                                    const teamBNames = m.teamB.map((id) => playerNameById.get(id) ?? id).join(", ");
+
                                                     return (
-                                                        <label
-                                                            key={p.id}
-                                                            className={[
-                                                                "flex items-center justify-between gap-3 rounded-xl border px-3 py-2 text-sm",
-                                                                checked
-                                                                    ? "border-emerald-500/25 bg-emerald-500/10"
-                                                                    : "border-white/10 bg-zinc-900/40 hover:bg-zinc-900/60",
-                                                            ].join(" ")}
+                                                        <div
+                                                            key={m.id}
+                                                            className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-white/10 bg-zinc-950 p-3"
                                                         >
-                                                            <span className="text-white/90">{p.nickname?.trim() || p.name}</span>
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={checked}
-                                                                onChange={(e) => togglePresent(p.id, e.target.checked)}
-                                                            />
-                                                        </label>
+                                                            <div className="min-w-0 flex-1">
+                                                                <div className="flex flex-wrap items-center gap-2 text-sm">
+                                                                    <span className="font-medium text-white/50">
+                                                                        {fmtDate(m.date)} {fmtTime(m.date)}
+                                                                    </span>
+                                                                    <span className={`font-semibold ${res.cls}`}>{res.text}</span>
+                                                                    {m.venue && (
+                                                                        <span className="text-white/40">📍 {m.venue}</span>
+                                                                    )}
+                                                                </div>
+                                                                <div className="mt-1 text-xs text-white/60 leading-relaxed">
+                                                                    <span className="text-white/80 font-medium">A:</span> {teamANames}
+                                                                    <span className="mx-2 text-white/30">vs</span>
+                                                                    <span className="text-white/80 font-medium">B:</span> {teamBNames}
+                                                                </div>
+                                                            </div>
+
+                                                            <button
+                                                                onClick={() => setDeletingMatchId(m.id)}
+                                                                className="shrink-0 rounded-xl border border-white/10 bg-zinc-950 px-3 py-1.5 text-xs font-medium hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-200 transition"
+                                                            >
+                                                                Eliminar
+                                                            </button>
+                                                        </div>
                                                     );
                                                 })}
-                                        </div>
-
-                                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                                            <div>
-                                                <label className="mb-1 block text-xs text-white/60">Host (opcional)</label>
-                                                <select
-                                                    value={hostId}
-                                                    onChange={(e) => setHostId(e.target.value)}
-                                                    className="w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500/30"
-                                                    disabled={!presentIds.length}
-                                                >
-                                                    <option value="">—</option>
-                                                    {presentIds.map((pid) => (
-                                                        <option key={`host-${pid}`} value={pid}>
-                                                            {playerNameById.get(pid) ?? pid}
-                                                        </option>
-                                                    ))}
-                                                </select>
                                             </div>
+                                        )}
+                                    </div>
+                                </details>
 
+                                {/* ────────── 5) Gestionar juntadas ────────── */}
+                                <details
+                                    className="card-solid rounded-2xl"
+                                    onToggle={(e) => {
+                                        if ((e.target as HTMLDetailsElement).open && !asadosLoaded) {
+                                            refreshAsados();
+                                        }
+                                    }}
+                                >
+                                    <summary className="cursor-pointer select-none list-none px-4 py-4">
+                                        <div className="flex items-center justify-between gap-3">
                                             <div>
-                                                <label className="mb-1 block text-xs text-white/60">Asador (opcional)</label>
-                                                <select
-                                                    value={asadorId}
-                                                    onChange={(e) => setAsadorId(e.target.value)}
-                                                    className="w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-emerald-500/30"
-                                                    disabled={!presentIds.length}
-                                                >
-                                                    <option value="">—</option>
-                                                    {presentIds.map((pid) => (
-                                                        <option key={`asador-${pid}`} value={pid}>
-                                                            {playerNameById.get(pid) ?? pid}
-                                                        </option>
-                                                    ))}
-                                                </select>
+                                                <h2 className="text-lg font-semibold">5) Gestionar juntadas 🥩</h2>
+                                                <p className="text-sm text-white/60">
+                                                    {asadosLoaded
+                                                        ? <>{asados.length} juntada{asados.length !== 1 && "s"} cargada{asados.length !== 1 && "s"}</>
+                                                        : "Expandí para ver las juntadas"}
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                {asadosLoaded && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); refreshAsados(); }}
+                                                        className="rounded-full border border-white/10 bg-zinc-950 px-4 py-2 text-sm hover:border-emerald-500/30 hover:bg-zinc-900"
+                                                        disabled={asadosLoading}
+                                                    >
+                                                        {asadosLoading ? "Cargando..." : "Refrescar"}
+                                                    </button>
+                                                )}
+                                                <span className="text-xs text-white/50">▼</span>
                                             </div>
                                         </div>
-                                    </div>
+                                    </summary>
 
-                                    <div className="mt-4 flex items-center justify-between gap-3">
-                                        <div className="text-xs text-white/50">
-                                            Tip: host/asador suman +1 punto extra.
-                                        </div>
+                                    <div className="px-4 pb-4">
+                                        {asadosErr && (
+                                            <div className="mt-2 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
+                                                {asadosErr}
+                                            </div>
+                                        )}
 
-                                        <button
-                                            onClick={submitAsado}
-                                            disabled={aLoading || !presentIds.length}
-                                            className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-zinc-950 disabled:opacity-40"
-                                        >
-                                            {aLoading ? "Guardando..." : "Guardar juntada"}
-                                        </button>
+                                        {asadosLoading && !asadosLoaded && (
+                                            <p className="mt-4 text-white/60 text-sm">Cargando juntadas…</p>
+                                        )}
+
+                                        {asadosLoaded && asados.length === 0 && (
+                                            <p className="mt-4 text-white/60 text-sm">No hay juntadas cargadas.</p>
+                                        )}
+
+                                        {asadosLoaded && asados.length > 0 && (
+                                            <div className="mt-4 space-y-2">
+                                                {asados.map((a) => {
+                                                    const presentNames = a.presentPlayerIds
+                                                        .map((id) => playerNameById.get(id) ?? id)
+                                                        .join(", ");
+                                                    const hostName = a.hostPlayerId ? (playerNameById.get(a.hostPlayerId) ?? a.hostPlayerId) : null;
+                                                    const asadorName = a.asadorPlayerId ? (playerNameById.get(a.asadorPlayerId) ?? a.asadorPlayerId) : null;
+
+                                                    return (
+                                                        <div
+                                                            key={a.id}
+                                                            className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-white/10 bg-zinc-950 p-3"
+                                                        >
+                                                            <div className="min-w-0 flex-1">
+                                                                <div className="flex flex-wrap items-center gap-2 text-sm">
+                                                                    <span className="font-medium text-white/50">
+                                                                        {fmtDate(a.date)} {fmtTime(a.date)}
+                                                                    </span>
+                                                                    <span className="text-white/80">
+                                                                        {a.presentPlayerIds.length} presente{a.presentPlayerIds.length !== 1 && "s"}
+                                                                    </span>
+                                                                    {a.venue && (
+                                                                        <span className="text-white/40">📍 {a.venue}</span>
+                                                                    )}
+                                                                </div>
+                                                                <div className="mt-1 text-xs text-white/60 leading-relaxed">
+                                                                    {presentNames}
+                                                                    {hostName && (
+                                                                        <span className="ml-2 text-amber-300/70">🏠 {hostName}</span>
+                                                                    )}
+                                                                    {asadorName && (
+                                                                        <span className="ml-2 text-orange-300/70">🔥 {asadorName}</span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+
+                                                            <button
+                                                                onClick={() => setDeletingAsadoId(a.id)}
+                                                                className="shrink-0 rounded-xl border border-white/10 bg-zinc-950 px-3 py-1.5 text-xs font-medium hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-200 transition"
+                                                            >
+                                                                Eliminar
+                                                            </button>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
                                     </div>
-                                </div>
+                                </details>
 
                             </div>
                         )}
                     </>
                 )}
             </div>
+
+            {/* ── Modales de confirmación ── */}
+            <ConfirmModal
+                open={!!deletingMatchId}
+                title="Eliminar partido"
+                message="¿Estás seguro? Se eliminará el partido y se recalcularán todos los standings de la temporada. Esta acción no se puede deshacer."
+                loading={deleteMatchLoading}
+                onConfirm={confirmDeleteMatch}
+                onCancel={() => setDeletingMatchId(null)}
+            />
+
+            <ConfirmModal
+                open={!!deletingAsadoId}
+                title="Eliminar juntada"
+                message="¿Estás seguro? Se eliminará la juntada y se recalcularán los standings de asados. Esta acción no se puede deshacer."
+                loading={deleteAsadoLoading}
+                onConfirm={confirmDeleteAsado}
+                onCancel={() => setDeletingAsadoId(null)}
+            />
         </main>
     );
 
